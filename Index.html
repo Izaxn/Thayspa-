@@ -80,7 +80,31 @@
   .btn-ghost{background:transparent;color:var(--espresso);border-color:var(--espresso);}
   .btn-ghost:hover{background:var(--espresso);color:var(--ivory);}
   .btn-sm{padding:9px 18px;font-size:13px;}
-  @media (max-width:760px){.nav-links{display:none;}}
+  .hamburger{
+    display:none;flex-direction:column;justify-content:center;gap:5px;
+    width:38px;height:38px;border:none;background:transparent;cursor:pointer;padding:0;
+  }
+  .hamburger span{display:block;width:24px;height:2px;background:var(--espresso);transition:all .25s ease;}
+  .hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+  .hamburger.open span:nth-child(2){opacity:0;}
+  .hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+  .mobile-menu{
+    display:none;flex-direction:column;
+    max-height:0;overflow:hidden;transition:max-height .3s ease;
+    background:var(--card);border-bottom:1px solid var(--line);
+  }
+  .mobile-menu.open{max-height:400px;}
+  .mobile-menu a, .mobile-menu button{
+    padding:16px 28px;text-align:left;font-size:15px;font-weight:500;color:var(--espresso);
+    text-decoration:none;border-bottom:1px solid var(--line);background:none;border-left:none;border-right:none;border-top:none;
+    font-family:'Manrope',sans-serif;cursor:pointer;
+  }
+  .mobile-menu a:last-child, .mobile-menu button:last-child{border-bottom:none;}
+  @media (max-width:760px){
+    .nav-links{display:none;}
+    .hamburger{display:flex;}
+    .mobile-menu{display:flex;}
+  }
 
   /* HERO */
   .hero{
@@ -344,6 +368,16 @@
       <a href="#policies">Policies</a>
     </div>
     <button class="btn btn-primary btn-sm" onclick="openModal()">Book now</button>
+    <button class="hamburger" id="hamburgerBtn" aria-label="Menu" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#menu" onclick="closeMobileMenu()">Treatments</a>
+    <a href="#packages" onclick="closeMobileMenu()">Packages</a>
+    <a href="#difference" onclick="closeMobileMenu()">Why us</a>
+    <a href="#policies" onclick="closeMobileMenu()">Policies</a>
+    <button onclick="closeMobileMenu();openAdmin();">Staff / Admin</button>
   </div>
 </nav>
 
@@ -750,6 +784,14 @@
 </div>
 
 <script>
+function toggleMobileMenu(){
+  document.getElementById('hamburgerBtn').classList.toggle('open');
+  document.getElementById('mobileMenu').classList.toggle('open');
+}
+function closeMobileMenu(){
+  document.getElementById('hamburgerBtn').classList.remove('open');
+  document.getElementById('mobileMenu').classList.remove('open');
+}
 function toggleAcc(headEl){
   const item = headEl.parentElement;
   const wasOpen = item.classList.contains('open');
@@ -777,6 +819,56 @@ document.getElementById('modalOverlay').addEventListener('click', function(e){
   if(e.target === this) closeModal();
 });
 document.querySelector('.accordion .acc-item').classList.add('open');
+</script>
+
+<!--
+  ============================================================
+  BOOKING NOTIFICATIONS (EmailJS) -- free, ~5 minute setup
+  ============================================================
+  This sends YOU an email (which shows up as a phone notification
+  through your Gmail/Mail app) every time someone submits a booking.
+  No server needed, no cost for normal small-business volume
+  (EmailJS free tier = 200 emails/month).
+
+  Setup:
+  1. Go to https://www.emailjs.com and sign up (free).
+  2. "Email Services" -> Add New Service -> connect your Gmail
+     (or whatever inbox you want notifications sent to). Note the
+     Service ID it gives you.
+  3. "Email Templates" -> Create New Template. Set the "To email"
+     field to your own address (this is who gets notified). In the
+     template body use variables like {{name}}, {{phone}},
+     {{service}}, {{date}}, {{time}}, {{notes}} -- wherever you want
+     them to show up in the email. Note the Template ID.
+  4. "Account" -> find your Public Key.
+  5. Paste all three below, replacing the placeholders.
+  That's it -- every new booking now emails/pings your phone.
+  ============================================================
+-->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  const EMAILJS_PUBLIC_KEY  = "YOUR_PUBLIC_KEY";
+  const EMAILJS_SERVICE_ID  = "YOUR_SERVICE_ID";
+  const EMAILJS_TEMPLATE_ID = "YOUR_TEMPLATE_ID";
+
+  if (typeof emailjs !== 'undefined' && EMAILJS_PUBLIC_KEY !== "YOUR_PUBLIC_KEY") {
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+  }
+
+  window.notifyAdminOfBooking = function(booking){
+    if (typeof emailjs === 'undefined' || EMAILJS_PUBLIC_KEY === "YOUR_PUBLIC_KEY") {
+      console.log('EmailJS not configured yet -- skipping notification.', booking);
+      return;
+    }
+    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      name: booking.name,
+      phone: booking.phone,
+      service: booking.service,
+      date: booking.date,
+      time: booking.time,
+      notes: booking.notes || '(none)'
+    }).catch(err => console.error('EmailJS notification failed:', err));
+  };
 </script>
 
 <!--
@@ -941,6 +1033,10 @@ document.querySelector('.accordion .acc-item').classList.add('open');
           createdAt: serverTimestamp()
         });
       });
+
+      if (typeof notifyAdminOfBooking === 'function') {
+        notifyAdminOfBooking({ name, phone, service, date, time, notes });
+      }
 
       document.getElementById('formView').classList.add('hidden');
       document.getElementById('confirmView').classList.add('active');
